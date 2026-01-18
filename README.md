@@ -252,3 +252,11 @@ npm run clean:all     # full cleanup (including node_modules)
 - ESLint and Prettier are enforced in CI before tests.
 
 ---
+
+## Before commit files:
+
+npm run format:check
+npm run lint                                             
+npm run typecheck
+
+---
