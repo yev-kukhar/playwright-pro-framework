@@ -6,14 +6,14 @@ Test automation framework based on **Playwright + TypeScript**, covering **UI an
 
 ## Features
 
-- ✅ UI testing (Playwright Test, Page Object Model)
-- ✅ API testing (Playwright APIRequestContext)
-- ✅ Single source of truth for environment configuration (`.env`, `.env.<env>`)
-- ✅ HTML reports (local & CI)
-- ✅ JUnit reports (CI, GitHub Actions Test Summary)
-- ✅ ESLint + Prettier (code quality gate)
-- ✅ Ready for GitHub Actions CI
-- ✅ Separate UI / API projects
+- UI testing (Playwright Test, Page Object Model)
+- API testing (Playwright APIRequestContext)
+- Single source of truth for environment configuration (`.env`, `.env.<env>`)
+- HTML reports (local & CI)
+- JUnit reports (CI, GitHub Actions Test Summary)
+- ESLint + Prettier (code quality gate)
+- Ready for GitHub Actions CI
+- Separate UI / API projects
 
 ---
 
@@ -35,7 +35,7 @@ Test automation framework based on **Playwright + TypeScript**, covering **UI an
 │   │   ├── env.loader.ts
 │   │   └── env.ts
 │   ├── pages
-│   └── utils
+│   
 │
 ├── tests
 │   ├── ui
@@ -247,17 +247,17 @@ npm run clean:all     # full cleanup (including node_modules)
 
 - UI and API configurations are isolated via Playwright projects.
 - Reporters are environment-aware:
-  - local → HTML
-  - CI → JUnit + HTML
+- local → HTML
+- CI → JUnit + HTML
 - ESLint and Prettier are enforced in CI before tests.
 
 ---
 
-## Before commit files:
+## Before commit files and push to the repo:
 
-npm run format
-npm run format:check
-npm run lint  
-npm run typecheck
+`npm run format`
+`npm run format:check`
+`npm run lint`
+`npm run typecheck`
 
 ---
