@@ -5,6 +5,11 @@ on:
     branches: ["**"]
   pull_request:
 
+# Required for dorny/test-reporter to create check runs
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   quality:
     name: Quality (format, lint, typecheck)
