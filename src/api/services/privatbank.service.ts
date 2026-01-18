@@ -1,20 +1,18 @@
-import { APIRequestContext } from '@playwright/test';
-import { BaseApiClient } from '../clients/base.client';
+import { APIRequestContext } from "@playwright/test";
+import { BaseApiClient } from "../clients/base.client";
 import {
   Currency,
   ExchangeRatesResponse,
   ArchiveRate,
-  CurrencyCode,
-  CourseType
-} from '../models/privatbank.models';
+  CourseType,
+} from "../models/privatbank.models";
 
 /**
  * Сервіс для роботи з PrivatBank API
  */
 export class PrivatBankService extends BaseApiClient {
-  
   constructor(request: APIRequestContext) {
-    super(request, '/p24api');
+    super(request, "/p24api");
   }
 
   /**
@@ -22,9 +20,9 @@ export class PrivatBankService extends BaseApiClient {
    * GET /pubinfo?exchange&coursid=5
    */
   async getCurrentCashRates(): Promise<Currency[]> {
-    return this.get<Currency[]>('/pubinfo', {
-      exchange: '',
-      coursid: CourseType.CASH
+    return this.get<Currency[]>("/pubinfo", {
+      exchange: "",
+      coursid: CourseType.CASH,
     });
   }
 
@@ -33,9 +31,9 @@ export class PrivatBankService extends BaseApiClient {
    * GET /pubinfo?exchange&coursid=11
    */
   async getCurrentNonCashRates(): Promise<Currency[]> {
-    return this.get<Currency[]>('/pubinfo', {
-      exchange: '',
-      coursid: CourseType.NON_CASH
+    return this.get<Currency[]>("/pubinfo", {
+      exchange: "",
+      coursid: CourseType.NON_CASH,
     });
   }
 
@@ -45,7 +43,7 @@ export class PrivatBankService extends BaseApiClient {
    * @param date - формат DD.MM.YYYY (наприклад, 01.12.2023)
    */
   async getExchangeRatesByDate(date: string): Promise<ExchangeRatesResponse> {
-    return this.get<ExchangeRatesResponse>('/exchange_rates', { date });
+    return this.get<ExchangeRatesResponse>("/exchange_rates", { date });
   }
 
   /**
@@ -54,10 +52,10 @@ export class PrivatBankService extends BaseApiClient {
    * @param date - формат DD.MM.YYYY
    */
   async getArchiveRates(date: string): Promise<ArchiveRate[]> {
-    return this.get<ArchiveRate[]>('/pubinfo', {
-      exchange: '',
+    return this.get<ArchiveRate[]>("/pubinfo", {
+      exchange: "",
       coursid: CourseType.CASH,
-      date
+      date,
     });
   }
 
@@ -68,7 +66,7 @@ export class PrivatBankService extends BaseApiClient {
   async getCurrencyRate(currencyCode: string): Promise<Currency | undefined> {
     const rates = await this.getCurrentCashRates();
     return rates.find(
-      rate => rate.ccy.toLowerCase() === currencyCode.toLowerCase()
+      (rate) => rate.ccy.toLowerCase() === currencyCode.toLowerCase(),
     );
   }
 
@@ -81,21 +79,23 @@ export class PrivatBankService extends BaseApiClient {
   async isCurrencyRateInRange(
     currencyCode: string,
     minRate: number,
-    maxRate: number
+    maxRate: number,
   ): Promise<boolean> {
     const rate = await this.getCurrencyRate(currencyCode);
-    
+
     if (!rate) {
       return false;
     }
-    
+
     const buyRate = parseFloat(rate.buy);
     const saleRate = parseFloat(rate.sale);
-    
-    return buyRate >= minRate && 
-           buyRate <= maxRate && 
-           saleRate >= minRate && 
-           saleRate <= maxRate;
+
+    return (
+      buyRate >= minRate &&
+      buyRate <= maxRate &&
+      saleRate >= minRate &&
+      saleRate <= maxRate
+    );
   }
 
   /**
@@ -107,7 +107,7 @@ export class PrivatBankService extends BaseApiClient {
   async compareCurrencyRates(
     currencyCode: string,
     date1: string,
-    date2: string
+    date2: string,
   ): Promise<{
     date1Rate: number;
     date2Rate: number;
@@ -116,14 +116,14 @@ export class PrivatBankService extends BaseApiClient {
   } | null> {
     const [rates1, rates2] = await Promise.all([
       this.getExchangeRatesByDate(date1),
-      this.getExchangeRatesByDate(date2)
+      this.getExchangeRatesByDate(date2),
     ]);
 
     const currency1 = rates1.exchangeRate.find(
-      r => r.currency === currencyCode.toUpperCase()
+      (r) => r.currency === currencyCode.toUpperCase(),
     );
     const currency2 = rates2.exchangeRate.find(
-      r => r.currency === currencyCode.toUpperCase()
+      (r) => r.currency === currencyCode.toUpperCase(),
     );
 
     if (!currency1 || !currency2) {
@@ -139,7 +139,7 @@ export class PrivatBankService extends BaseApiClient {
       date1Rate: rate1,
       date2Rate: rate2,
       difference: parseFloat(difference.toFixed(2)),
-      percentChange: parseFloat(percentChange.toFixed(2))
+      percentChange: parseFloat(percentChange.toFixed(2)),
     };
   }
 }

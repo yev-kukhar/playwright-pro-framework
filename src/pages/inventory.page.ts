@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, Locator, expect } from "@playwright/test";
 
 export class InventoryPage {
   readonly page: Page;
@@ -6,7 +6,7 @@ export class InventoryPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.inventoryList = page.locator('.inventory_list');
+    this.inventoryList = page.locator(".inventory_list");
   }
 
   async waitForLoad() {
@@ -14,6 +14,6 @@ export class InventoryPage {
   }
 
   async getItemsCount(): Promise<number> {
-    return await this.page.locator('.inventory_item').count();
+    return await this.page.locator(".inventory_item").count();
   }
 }

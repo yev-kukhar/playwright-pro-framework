@@ -1,68 +1,71 @@
-import { defineConfig } from '@playwright/test';
-import 'dotenv/config';
+import { defineConfig } from "@playwright/test";
+import { loadEnv } from "./src/config/env.loader";
 
+// Load .env and optional .env.<TEST_ENV> before Playwright reads process.env
+loadEnv();
+
+const isCI = !!process.env.CI;
+const suite = process.env.TEST_SUITE ?? "all";
+
+/**
+ * Playwright configuration
+ *
+ * Key idea:
+ * - Do not set a single global baseURL when you have multiple contexts (UI + API).
+ * - Use Playwright "projects" to isolate configuration per context.
+ */
 export default defineConfig({
-  testDir: './tests',
+  testDir: "./tests",
 
-  timeout: 10000,
-  expect: { timeout: 5000 },
+  timeout: 30_000,
+  expect: { timeout: 5_000 },
 
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 1 : undefined,
 
-  reporter: process.env.REPORTER === 'allure'
+  reporter: isCI
     ? [
-      ['list'],
-      ['allure-playwright', {
-        outputFolder: 'allure-results',
-        detail: true,
-        suiteTitle: true,
-        environmentInfo: {
-          'Test Environment': process.env.TEST_ENV || 'production',
-          'UI URL': process.env.BASE_URL || 'https://www.saucedemo.com',
-          'API URL': process.env.API_BASE_URL || 'https://api.privatbank.ua',
-          'Node Version': process.version,
-          'OS': process.platform
-        }
-      }]
-    ]
+        ["list"],
+        ["junit", { outputFile: `test-results/junit-${suite}.xml` }],
+        ["html", { open: "never" }],
+      ]
     : [
-      ['list'],
-      ['html', { outputFolder: 'playwright-report', open: 'never' }],
-      ['json', { outputFile: 'test-results/results.json' }],
-      ['junit', { outputFile: 'test-results/junit.xml' }]
-    ],
+        ["list"],
+        ["html", { open: process.env.PW_HTML_REPORT_OPEN ?? "never" }],
+      ],
 
-
+  /**
+   * Shared "use" options across all projects.
+   * Keep it neutral (no baseURL, no API-specific headers).
+   */
   use: {
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-    ignoreHTTPSErrors: true
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
+    ignoreHTTPSErrors: true,
   },
 
   projects: [
     {
-      name: 'UI',
-      testDir: './tests/ui',
+      name: "UI",
+      testDir: "./tests/ui",
       use: {
-        baseURL: process.env.BASE_URL || 'https://www.saucedemo.com',
-      }
+        baseURL: process.env.BASE_URL || "https://www.saucedemo.com",
+      },
     },
     {
-      name: 'API',
-      testDir: './tests/api',
+      name: "API",
+      testDir: "./tests/api",
       use: {
-        baseURL: process.env.API_BASE_URL || 'https://api.privatbank.ua',
+        baseURL: process.env.API_BASE_URL || "https://api.privatbank.ua",
         extraHTTPHeaders: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        }
-      }
-    }
+          Accept: "application/json",
+        },
+      },
+    },
   ],
 
-  outputDir: 'test-results/',
+  outputDir: "test-results/",
 });

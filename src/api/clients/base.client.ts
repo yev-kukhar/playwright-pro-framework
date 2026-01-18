@@ -1,137 +1,119 @@
-import { APIRequestContext, APIResponse } from '@playwright/test';
-import 'dotenv/config';
+import { APIRequestContext, APIResponse, expect } from "@playwright/test";
 
 /**
- * Базовий API клієнт для всіх HTTP запитів
+ * BaseApiClient
+ *
+ * Base class for all API clients.
+ *
+ * Design principles:
+ * 1) Does NOT read environment variables directly.
+ *    (baseURL is provided by Playwright project configuration)
+ * 2) Works ONLY with relative paths.
+ * 3) Encapsulates URL building and common HTTP operations.
+ *
+ * Benefits:
+ * - No baseURL conflicts between UI and API.
+ * - Clear separation of responsibilities.
+ * - Easy scalability for multiple APIs / environments.
  */
-export class BaseApiClient {
-  protected baseUrl: string;
-
+export abstract class BaseApiClient {
   constructor(
-    protected request: APIRequestContext,
-    basePath: string = ''
-  ) {
-    const apiBaseUrl = process.env.API_BASE_URL;
-    if (!apiBaseUrl) {
-      throw new Error('API_BASE_URL is not defined in environment variables');
+    protected readonly request: APIRequestContext,
+
+    /**
+     * basePath — API base path (e.g. '/p24api')
+     * Used to group endpoints of a specific service.
+     */
+    private readonly basePath: string = "",
+  ) {}
+
+  /**
+   * Builds a relative URL using basePath + path + query parameters.
+   *
+   * Example:
+   * basePath = '/p24api'
+   * path     = '/exchange_rates'
+   * query    = { json: true, date: '01.12.2023' }
+   *
+   * Result:
+   * /p24api/exchange_rates?json=true&date=01.12.2023
+   */
+  protected buildUrl(
+    path: string,
+    query?: Record<string, string | number | boolean | undefined>,
+  ): string {
+    const normalizedBase =
+      this.basePath && !this.basePath.startsWith("/")
+        ? `/${this.basePath}`
+        : this.basePath;
+
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+    const urlPath = `${normalizedBase}${normalizedPath}`.replace(
+      /\/{2,}/g,
+      "/",
+    );
+
+    if (!query) return urlPath;
+
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined) continue;
+      params.set(key, String(value));
     }
-    this.baseUrl = `${apiBaseUrl}${basePath}`;
+
+    const qs = params.toString();
+    return qs ? `${urlPath}?${qs}` : urlPath;
   }
 
   /**
-   * GET запит
-   * @param path - шлях до ресурсу
-   * @param params - query параметри
+   * HTTP GET
+   * Used for read-only requests.
    */
   protected async get<T>(
     path: string,
-    params?: Record<string, string>
+    query?: Record<string, string | number | boolean | undefined>,
   ): Promise<T> {
-    const url = this.buildUrl(path, params);
+    const url = this.buildUrl(path, query);
     const response = await this.request.get(url);
-    await this.validateResponse(response);
-    return response.json() as T;
+    return this.expectOkJson<T>(response);
   }
 
   /**
-   * POST запит
-   * @param path - шлях до ресурсу
-   * @param data - тіло запиту
-   * @param params - query параметри
+   * HTTP POST
+   * Content-Type is handled by Playwright automatically,
+   * or can be overridden per-request if needed.
    */
-  protected async post<T>(
+  protected async post(
     path: string,
-    data: any,
-    params?: Record<string, string>
-  ): Promise<T> {
-    const url = this.buildUrl(path, params);
-    const response = await this.request.post(url, { data });
-    await this.validateResponse(response);
-    return response.json() as T;
-  }
-
-  /**
-   * PUT запит
-   * @param path - шлях до ресурсу
-   * @param data - тіло запиту
-   * @param params - query параметри
-   */
-  protected async put<T>(
-    path: string,
-    data: any,
-    params?: Record<string, string>
-  ): Promise<T> {
-    const url = this.buildUrl(path, params);
-    const response = await this.request.put(url, { data });
-    await this.validateResponse(response);
-    return response.json() as T;
-  }
-
-  /**
-   * DELETE запит
-   * @param path - шлях до ресурсу
-   * @param params - query параметри
-   */
-  protected async delete<T>(
-    path: string,
-    params?: Record<string, string>
-  ): Promise<T> {
-    const url = this.buildUrl(path, params);
-    const response = await this.request.delete(url);
-    await this.validateResponse(response);
-    return response.json() as T;
-  }
-
-  /**
-   * PATCH запит
-   * @param path - шлях до ресурсу
-   * @param data - тіло запиту
-   * @param params - query параметри
-   */
-  protected async patch<T>(
-    path: string,
-    data: any,
-    params?: Record<string, string>
-  ): Promise<T> {
-    const url = this.buildUrl(path, params);
-    const response = await this.request.patch(url, { data });
-    await this.validateResponse(response);
-    return response.json() as T;
-  }
-
-  /**
-   * Отримати raw response для кастомної обробки
-   */
-  protected async getRawResponse(
-    path: string,
-    params?: Record<string, string>
+    body?: unknown,
+    query?: Record<string, string | number | boolean | undefined>,
   ): Promise<APIResponse> {
-    const url = this.buildUrl(path, params);
+    const url = this.buildUrl(path, query);
+    return this.request.post(url, { data: body });
+  }
+
+  /**
+   * Escape hatch: raw response (status, headers, non-JSON assertions)
+   */
+  protected async getResponse(
+    path: string,
+    query?: Record<string, string | number | boolean | undefined>,
+  ): Promise<APIResponse> {
+    const url = this.buildUrl(path, query);
     return this.request.get(url);
   }
 
   /**
-   * Побудова URL з query параметрами
+   * Common assertion for successful JSON response.
+   * Provides a consistent validation style across API tests.
    */
-  private buildUrl(path: string, params?: Record<string, string>): string {
-    const url = `${this.baseUrl}${path}`;
-    
-    if (!params || Object.keys(params).length === 0) {
-      return url;
-    }
+  protected async expectOkJson<T>(response: APIResponse): Promise<T> {
+    expect(
+      response.ok(),
+      `Expected 2xx response, but received ${response.status()}`,
+    ).toBeTruthy();
 
-    const queryParams = new URLSearchParams(params);
-    return `${url}?${queryParams.toString()}`;
-  }
-
-  /**
-   * Валідація HTTP відповіді
-   */
-  private async validateResponse(response: APIResponse): Promise<void> {
-    if (!response.ok()) {
-      const body = await response.text().catch(() => 'Unable to read response body');
-      const errorMessage = `API request failed: ${response.status()} ${response.statusText()}\nURL: ${response.url()}\nResponse: ${body}`;
-      throw new Error(errorMessage);
-    }
+    return (await response.json()) as T;
   }
 }

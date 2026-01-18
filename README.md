@@ -1,285 +1,254 @@
-# Playwright TypeScript Framework (UI + API)
+# Playwright Framework (UI + API) - TypeScript
 
-Automation framework for UI and API testing built with **Playwright** and **TypeScript**. Supports reporting via **Playwright HTML** (default) or **Allure**.
+Test automation framework based on **Playwright + TypeScript**, covering **UI and API testing**, with clean architecture, environment management, reporting, and CI integration.
+
+---
+
+## Features
+
+- ✅ UI testing (Playwright Test, Page Object Model)
+- ✅ API testing (Playwright APIRequestContext)
+- ✅ Single source of truth for environment configuration (`.env`, `.env.<env>`)
+- ✅ HTML reports (local & CI)
+- ✅ JUnit reports (CI, GitHub Actions Test Summary)
+- ✅ ESLint + Prettier (code quality gate)
+- ✅ Ready for GitHub Actions CI
+- ✅ Separate UI / API projects
+
+---
 
 ## Project structure
 
 ```text
-playwright-pro-framework/
-├── src/
-│   ├── api/
-│   │   ├── clients/
-│   │   │   └── base.client.ts          # Base HTTP client
-│   │   ├── models/
-│   │   │   └── privatbank.model.ts     # TypeScript models
-│   │   └── services/
-│   │       └── privatbank.service.ts   # PrivatBank API service
-│   ├── data/                           # Test data
-│   ├── fixtures/                       # Shared fixtures
-│   ├── pages/                          # Page Objects (UI)
-│   └── utils/                          # Utilities
-├── tests/
-│   ├── api/                            # API tests
-│   │   └── privatbank.spec.ts
-│   └── ui/                             # UI tests
-├── .env                                # Local environment variables
-├── .env.example                        # Environment template
-├── playwright.config.ts                # Playwright config
-├── tsconfig.json                       # TypeScript config
-└── package.json                        # Dependencies and scripts
+.
+├── playwright.config.ts
+├── package.json
+├── tsconfig.json
+├── README.md
+│
+├── src
+│   ├── api
+│   │   ├── clients
+│   │   ├── models
+│   │   └── services
+│   ├── config
+│   │   ├── env.loader.ts
+│   │   └── env.ts
+│   ├── pages
+│   └── utils
+│
+├── tests
+│   ├── ui
+│   └── api
+│
+├── .github
+│   └── workflows
+│       └── ci.yml
+│
+├── .env.example
+├── .env.ci
+├── eslint.config.js
+└── .prettierrc.json
 ```
 
-## Requirements
+---
 
-- Node.js 18+
-- npm 9+
-- Allure (optional, only if you want Allure reports)
+## Environment configuration
 
-## Installation
+### Environment strategy
 
-1. Clone the repository:
+- `.env` — local environment (not committed)
+- `.env.<env>` — environment overlays (`ci`, `stage`, etc.)
+- `TEST_ENV` defines which overlay is used
 
-```bash
-git clone <your-repo-url>
-cd playwright-pro-framework
-```
+Load order:
 
-2. Install dependencies:
+1. `.env`
+2. `.env.<TEST_ENV>` (overrides)
 
-```bash
-npm install
-```
-
-3. Configure environment variables:
+### Example
 
 ```bash
 cp .env.example .env
+TEST_ENV=ci npm run test:api
 ```
 
-Example `.env`:
+---
+
+## How to run
+
+### Prerequisites
+
+- Node.js **20+**
+- npm **9+**
+
+---
+
+### 1) Setup (first time)
 
 ```bash
-# PrivatBank API Base URL
-API_BASE_URL=https://api.privatbank.ua
-
-# UI Base URL
-BASE_URL=https://www.saucedemo.com
-
-# Reporter: playwright | allure
-REPORTER=playwright
-
-# Any custom env label
-TEST_ENV=production
+npm ci
+npx playwright install --with-deps
+cp .env.example .env
 ```
 
-## Running tests
+---
 
-### Default run (all tests)
+### 2) Run tests locally
 
-```bash
-npm test
-```
-
-### Run only API tests
-
-```bash
-npm run test:api
-```
-
-### Run only UI tests
+#### UI tests
 
 ```bash
 npm run test:ui
 ```
 
-### Headed / UI mode / Debug
+Run with visible browser:
 
 ```bash
-npm run test:headed
-npm run test:ui-mode
-npm run test:debug
+npm run test:ui -- --headed
 ```
 
-## Reports
-
-### Playwright HTML report (default)
-
-Run tests:
+Debug mode:
 
 ```bash
-npm test
+npm run test:ui -- --debug
 ```
 
-Open the report:
+---
+
+#### API tests
+
+```bash
+npm run test:api
+```
+
+Run with environment overlay:
+
+```bash
+TEST_ENV=ci npm run test:api
+```
+
+---
+
+### 3) Reports
+
+Open the last HTML report:
 
 ```bash
 npm run report
 ```
 
-### Allure report
+Generated files (not committed):
 
-1. Install Allure (one-time, optional)
+- `playwright-report/`
+- `test-results/`
 
-macOS:
+---
 
-```bash
-brew install allure
-```
+### 4) Code quality
 
-Windows (Scoop):
-
-```bash
-scoop install allure
-```
-
-Linux (Ubuntu example):
+Lint:
 
 ```bash
-sudo apt-add-repository ppa:qameta/allure
-sudo apt-get update
-sudo apt-get install allure
+npm run lint
 ```
 
-2. Run tests with Allure reporter:
+Format (apply changes):
 
 ```bash
-npm run test:allure
+npm run format
 ```
 
-3. Generate and open the report:
+Format (check only):
 
 ```bash
-npm run allure:generate
-npm run allure:open
+npm run format:check
 ```
 
-Or serve report directly:
+---
 
-```bash
-allure serve allure-results
-```
-
-## Switching reporters
-
-### Option 1: via `.env`
-
-```bash
-# .env
-REPORTER=playwright
-# or
-REPORTER=allure
-```
-
-Then run:
-
-```bash
-npm test
-```
-
-### Option 2: via command line
-
-```bash
-REPORTER=playwright npm test
-REPORTER=allure npm test
-```
-
-## What is covered
-
-### PrivatBank API endpoints
-
-- Current exchange rates
-  - `GET /p24api/pubinfo?exchange&coursid=5` (cash)
-  - `GET /p24api/pubinfo?exchange&coursid=11` (non-cash)
-- Historical exchange rates
-  - `GET /p24api/exchange_rates?date=DD.MM.YYYY`
-  - `GET /p24api/pubinfo?exchange&coursid=5&date=DD.MM.YYYY`
-
-### Test types
-
-- Functional (schema/structure, data validation)
-- Business rules (buy rate < sell rate)
-- Performance (response time)
-- Parallel requests
-- Error handling
-
-## Usage examples
-
-### API test example
-
-```ts
-import { test, expect } from '@playwright/test';
-import { PrivatBankService } from '../../src/api/services/privatbank.service';
-import { CurrencyCode } from '../../src/api/models/privatbank.model';
-
-test('should get USD rate', async ({ request }) => {
-  const privatBank = new PrivatBankService(request);
-  const usdRate = await privatBank.getCurrencyRate(CurrencyCode.USD);
-
-  expect(usdRate).toBeDefined();
-  expect(usdRate?.ccy).toBe('USD');
-});
-```
-
-### Creating a new API service
-
-```ts
-import { APIRequestContext } from '@playwright/test';
-import { BaseApiClient } from '../clients/base.client';
-
-export class MyBankService extends BaseApiClient {
-  constructor(request: APIRequestContext) {
-    super(request, '/api/v1');
-  }
-
-  async getUsers(): Promise<User[]> {
-    return this.get<User[]>('/users');
-  }
-}
-```
-
-## Cleanup
+### 5) Clean project (remove generated artifacts)
 
 ```bash
 npm run clean
 ```
 
-Allure only:
+Remove everything including dependencies:
 
 ```bash
-npm run allure:clean
+npm run clean:all
 ```
 
-## Output directories
+---
 
-- `playwright-report/` — Playwright HTML report
-- `test-results/` — JSON and JUnit output
-- `allure-results/` — raw Allure results
-- `allure-report/` — generated Allure report
+## CI (GitHub Actions)
 
-## Useful links
+CI pipeline is configured via:
 
-- Playwright documentation: https://playwright.dev/docs/intro
-- Allure documentation: https://docs.qameta.io/allure/
-- TypeScript handbook: https://www.typescriptlang.org/docs/
-- PrivatBank API reference: https://api.privatbank.ua/
+```text
+.github/workflows/ci.yml
+```
 
-## Contributing
+Pipeline flow:
 
-1. Fork the repository
-2. Create a feature branch:
+1. Lint & formatting check
+2. UI tests
+3. API tests
+4. HTML report upload
+5. JUnit test summary in GitHub UI
+
+CI uses:
+
+- `.env.ci`
+- `CI=true`
+- `TEST_ENV=ci`
+
+---
+
+## Reports in CI
+
+- **HTML report** — uploaded as artifact (`playwright-report-*`)
+- **JUnit report** — parsed into GitHub Actions Test Summary
+
+---
+
+## What is NOT committed to the repository
+
+The following are generated artifacts and are ignored by git:
+
+- `node_modules/`
+- `playwright-report/`
+- `test-results/`
+- `blob-report/`
+- `.env`
+- `.env.*` (except `.env.example`, `.env.ci`)
+
+---
+
+## Scripts summary
 
 ```bash
-git checkout -b feature/new-tests
+npm run test          # run all tests
+npm run test:ui       # run UI tests
+npm run test:api      # run API tests
+
+npm run lint          # eslint check
+npm run format        # apply prettier formatting
+npm run format:check  # check formatting only
+
+npm run report        # open HTML report
+npm run clean         # remove generated artifacts
+npm run clean:all     # full cleanup (including node_modules)
 ```
 
-3. Commit changes:
+---
 
-```bash
-git commit -m "Add new tests"
-```
+## Notes
 
-4. Push the branch:
+- UI and API configurations are isolated via Playwright projects.
+- Reporters are environment-aware:
+  - local → HTML
+  - CI → JUnit + HTML
+- ESLint and Prettier are enforced in CI before tests.
 
-```bash
-git push origin feature/new-tests
-```
+---
