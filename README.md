@@ -255,8 +255,9 @@ npm run clean:all     # full cleanup (including node_modules)
 
 ## Before commit files:
 
+npm run format
 npm run format:check
-npm run lint                                             
+npm run lint  
 npm run typecheck
 
 ---
