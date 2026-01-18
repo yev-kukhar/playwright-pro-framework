@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  lint:
-    name: Lint & Format
+  quality:
+    name: Quality (format, lint, typecheck)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -15,73 +15,61 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node (with npm cache)
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install deps
+      - name: Install deps (reproducible)
         run: npm ci
 
-      - name: ESLint
-        run: npm run lint
-
-      - name: Prettier check
+      - name: Prettier check (format)
         run: npm run format:check
 
-  test:
-    name: Tests (${{ matrix.suite }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: [lint]
+      - name: ESLint (lint)
+        run: npm run lint
 
-    strategy:
-      fail-fast: false
-      matrix:
-        suite: [ui, api]
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+  api-tests:
+    name: API tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [quality]
 
     env:
       TEST_ENV: ci
+      TEST_SUITE: api
       PW_HTML_REPORT_OPEN: never
-      # CI is automatically set by GitHub Actions, but keep explicit if you want:
       CI: true
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node (with npm cache)
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install deps
+      - name: Install deps (reproducible)
         run: npm ci
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
       - name: Create .env (CI)
-        run: |
-          cp .env.ci .env
-
-      - name: Run UI tests
-        if: matrix.suite == 'ui'
-        run: npm run test:ui
+        run: cp .env.ci .env
 
       - name: Run API tests
-        if: matrix.suite == 'api'
         run: npm run test:api
 
-      # Publish JUnit into GitHub UI (PR checks + summary)
       - name: Test Report (JUnit)
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Playwright ${{ matrix.suite }}
-          path: test-results/junit.xml
+          name: Playwright API
+          path: test-results/junit-api.xml
           reporter: java-junit
           fail-on-error: false
 
@@ -89,7 +77,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.suite }}
+          name: playwright-report-api
           path: playwright-report/
           retention-days: 7
 
@@ -97,6 +85,71 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.suite }}
+          name: test-results-api
+          path: test-results/
+          retention-days: 7
+
+  ui-tests:
+    name: UI tests (headless)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [quality]
+
+    env:
+      TEST_ENV: ci
+      TEST_SUITE: ui
+      PW_HTML_REPORT_OPEN: never
+      CI: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (with npm cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps (reproducible)
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers (with deps)
+        run: npx playwright install --with-deps
+
+      - name: Create .env (CI)
+        run: cp .env.ci .env
+
+      - name: Run UI tests (headless by default)
+        run: npm run test:ui
+
+      - name: Test Report (JUnit)
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Playwright UI
+          path: test-results/junit-ui.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-ui
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload raw test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-ui
           path: test-results/
           retention-days: 7

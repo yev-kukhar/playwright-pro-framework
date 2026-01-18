@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "playwright test",
-    "test:ui": "playwright test --project=UI",
-    "test:api": "playwright test --project=API",
-    "lint": "eslint . --ext .ts",
-    "format": "prettier . --write",
-    "format:check": "prettier . --check",
-    "report": "playwright show-report",
-    "clean": "rm -rf playwright-report test-results blob-report",
-    "clean:all": "rm -rf playwright-report test-results blob-report node_modules"
+     "test": "playwright test",
+     "test:ui": "playwright test --project=UI",
+     "test:api": "playwright test --project=API",
+     "lint": "eslint . --ext .ts",
+     "format": "prettier . --write",
+     "format:check": "prettier . --check",
+     "typecheck": "tsc -p tsconfig.json --noEmit",
+     "report": "playwright show-report",
+     "clean": "rm -rf playwright-report test-results blob-report",
+     "clean:all": "rm -rf playwright-report test-results blob-report node_modules"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.0",
